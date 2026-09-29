@@ -14,7 +14,7 @@ import rubin_sim.maf.db as db
 import rubin_sim.maf.utils as utils
 from rubin_sim.maf.plots import PlotHandler
 
-from .metric_bundle import MetricBundle, _cols_from_pdconstraint, create_empty_metric_bundle
+from .metric_bundle import MetricBundle, create_empty_metric_bundle
 
 
 def make_bundles_dict_from_list(bundle_list):
@@ -404,25 +404,10 @@ class MetricBundleGroup:
                 )
             if pdconstraint:
                 print("Applying pandas constraint: %s" % pdconstraint)
-        # Collect stackers whose output columns are referenced in the
-        # pdconstraint.  These must run before the pandas filter is applied,
-        # so we pass them to get_sim_data rather than deferring them to
-        # _run_compatible.
-        pd_cols = _cols_from_pdconstraint(pdconstraint)
-        pd_stackers = []
-        if pd_cols:
-            seen_stacker_classes = set()
-            for b in self.current_bundle_dict.values():
-                for stacker in b.stacker_list:
-                    if set(stacker.cols_added) & pd_cols:
-                        if stacker.__class__ not in seen_stacker_classes:
-                            pd_stackers.append(stacker)
-                            seen_stacker_classes.add(stacker.__class__)
         self.sim_data = utils.get_sim_data(
             self.db_obj,
             constraint,
             self.db_cols,
-            stackers=pd_stackers if pd_stackers else None,
             table_name=self.db_table,
             pdconstraint=pdconstraint or None,
         )

@@ -246,7 +246,7 @@ def chimera_batch(
     pdconstraints[f"{label_prefix}_all"] = ""
 
     bundle_list = _make_base_progress_bundle_list(pdconstraints, colmap, nside)
-    fO_bundle = _make_fO_bundle()
+    fO_bundle = _make_fO_bundle(nside=nside)
 
     bundle_list.append(fO_bundle)
 

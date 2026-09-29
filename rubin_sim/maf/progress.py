@@ -603,6 +603,8 @@ def run_progress_batches_cmd(
     dayobs_list = dayobs_range(start_dayobs, end_dayobs, step)
     if not dayobs_list:
         raise click.UsageError("dayobs_range produced no dates; check --start-dayobs and --end-dayobs.")
+    if dayobs_list[-1] != end_dayobs:
+        dayobs_list.append(end_dayobs)
 
     results_db_path = run_progress_batches(
         visits_file,

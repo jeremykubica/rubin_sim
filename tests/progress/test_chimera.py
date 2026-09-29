@@ -587,6 +587,26 @@ class TestRunProgressBatchesCommand(unittest.TestCase):
             self.assertIsNone(result.exception)
             self.assertIs(run_batches.call_args.kwargs["batch_func"], batches.snapshot_batch)
 
+    def test_reports_end_dayobs_when_off_cadence(self):
+        with tempfile.TemporaryDirectory() as out_dir:
+            visits_file = os.path.join(out_dir, "visits.h5")
+            with open(visits_file, "wb"):
+                pass
+            with patch("rubin_sim.maf.progress.run_progress_batches", return_value="results.db"):
+                for end_dayobs, count in (("20260103", 2), ("20260104", 3)):
+                    with self.subTest(end_dayobs=end_dayobs):
+                        result = CliRunner().invoke(
+                            run_progress_batches_cmd,
+                            [
+                                "--visits-file", visits_file,
+                                "--start-dayobs", "20260101",
+                                "--end-dayobs", end_dayobs,
+                                "--step", "2",
+                            ],
+                        )
+                        self.assertIsNone(result.exception)
+                        self.assertIn(f"Ran {count} batch(es)", result.output)
+
     def test_rejects_unknown_batch(self):
         with tempfile.TemporaryDirectory() as out_dir:
             visits_file = os.path.join(out_dir, "visits.h5")
@@ -605,6 +625,16 @@ class TestRunProgressBatchesCommand(unittest.TestCase):
             self.assertNotEqual(result.exit_code, 0)
             self.assertIn("not a known batch function", result.output)
             run_batches.assert_not_called()
+
+
+class TestChimeraBatch(unittest.TestCase):
+    def test_fo_bundle_uses_requested_nside(self):
+        from rubin_sim.maf.batches.progress_batch import chimera_batch
+
+        bundles = chimera_batch(bands=(), nside=8)
+        fo_bundle = next(bundle for bundle in bundles.values() if bundle.metric.name == "fO")
+        self.assertEqual(fo_bundle.slicer.nside, 8)
+        self.assertEqual({metric.nside for metric in fo_bundle.summary_metrics}, {8})
 
 
 class TestSnapshotBatch(unittest.TestCase):
