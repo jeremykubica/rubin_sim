@@ -65,7 +65,7 @@ def science_radar_batch(
         mjd0_from_dayobs0 = Time.strptime(dayobs0, "%Y%m%d").mjd + 0.5
         if mjd0 is not None and mjd0_from_dayobs0 != mjd0:
             raise ValueError(
-                "If both mjd0 and dayobs0 are set, they must agree, but they differ by"
+                "If both mjd0 and dayobs0 are set, they must agree, but they differ by "
                 f"{mjd0-mjd0_from_dayobs0} days."
             )
         mjd0 = mjd0_from_dayobs0
