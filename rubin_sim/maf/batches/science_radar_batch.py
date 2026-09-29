@@ -59,13 +59,10 @@ def science_radar_batch(
     -------
     metric_bundleDict : `dict` of `maf.MetricBundle`
     """
-    if dayobs0 is None:
-        if mjd0 is None:
-            raise ValueError("Eithor mjd0 or dayobs0 must be set.")
-    else:
+    if dayobs0 is not None:
         dayobs0 = str(dayobs0).replace("-", "")
         assert isinstance(dayobs0, str)
-        mjd0_from_dayobs0 = Time.strptime(dayobs0, "%Y%m%d").mjd - 0.5
+        mjd0_from_dayobs0 = Time.strptime(dayobs0, "%Y%m%d").mjd + 0.5
         if mjd0 is not None and mjd0_from_dayobs0 != mjd0:
             raise ValueError(
                 "If both mjd0 and dayobs0 are set, they must agree, but they differ by"
