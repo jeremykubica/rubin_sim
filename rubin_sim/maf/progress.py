@@ -386,7 +386,7 @@ def make_chimera_summary_table(results_db: db.ResultsDb | str) -> pd.DataFrame:
 
     # Get all run_names that look like chimera runs and find their metric IDs.
     all_run_names = results_db.get_run_name()
-    chimera_run_names = [r for r in all_run_names if _dayobs_from_run_name(r) is not None]
+    chimera_run_names = [r for r in all_run_names if r.startswith("chimera_") and _dayobs_from_run_name(r) is not None]
 
     if not chimera_run_names:
         warnings.warn("No chimera run names found in results_db.")
