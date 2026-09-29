@@ -1,4 +1,4 @@
-import glob
+-import glob
 import os
 import shutil
 import tempfile
@@ -184,6 +184,38 @@ class TestMetricBundle(unittest.TestCase):
         assert count_pd > 0
         assert count_pd < count_all
         assert np.isfinite(count_pd)
+
+    def test_pdconstraint_stacker_column(self):
+        """A pdconstraint referencing a stacker column (dayObs) should not raise
+        UndefinedVariableError; get_data must run the required stacker before
+        applying the pandas filter.
+        """
+        metric = metrics.CountMetric(col="observationId")
+        slicer = slicers.UniSlicer()
+        database = os.path.join(get_data_dir(), "tests", TEST_DB)
+
+        # dayObs is produced by DayObsStacker, not present in the database.
+        b_no_pd = metric_bundles.MetricBundle(metric, slicer, "")
+        b_dayobs = metric_bundles.MetricBundle(
+            metric, slicer, "", pdconstraint="dayObs > 0"
+        )
+
+        bg_no_pd = metric_bundles.MetricBundleGroup(
+            {"all": b_no_pd}, database, out_dir=self.out_dir
+        )
+        bg_no_pd.run_all()
+
+        # This should not raise UndefinedVariableError.
+        bg_dayobs = metric_bundles.MetricBundleGroup(
+            {"dayobs": b_dayobs}, database, out_dir=self.out_dir
+        )
+        bg_dayobs.run_all()
+
+        count_all = b_no_pd.metric_values.data[0]
+        count_dayobs = b_dayobs.metric_values.data[0]
+        # All real visits have dayObs > 0, so counts should be equal.
+        assert count_dayobs > 0
+        assert count_dayobs == count_all
 
     def tearDown(self):
         if os.path.isdir(self.out_dir):
