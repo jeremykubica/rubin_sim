@@ -310,10 +310,8 @@ def run_progress_batches(
     Parameters
     ----------
     visits_path : `str`
-        Path to an HDF5 or SQLite visits file.  The file must include a
-        boolean ``simulated`` column and a ``dayObs`` column (integer
-        YYYYMMDD).  May be a chimera file, a pure baseline, or a
-        consdb-derived visits file.
+        Path to an HDF5 or SQLite visits file.  May be a chimera file,
+        a pure baseline, or a consdb-derived visits file.
     start_dayobs : `int`
         First dayobs in the sequence, YYYYMMDD.
     end_dayobs : `int`
@@ -367,7 +365,7 @@ def make_chimera_summary_table(results_db: db.ResultsDb | str) -> pd.DataFrame:
     Queries the ``ResultsDb`` for all runs whose names match the
     ``chimera_YYYYMMDD`` pattern and returns a wide-format DataFrame with
     one row per transition date and one column per summary metric.
-g
+
     Parameters
     ----------
     results_db : `rubin_sim.maf.db.ResultsDb` or `str`
@@ -551,13 +549,13 @@ def run_chimera_batches_cmd(chimera_dir, out_dir, batch, batch_kwargs):
     "--visits-file",
     required=True,
     type=click.Path(exists=True),
-    help="HDF5 or SQLite visits file with a 'simulated' column and a 'dayObs' column.",
+    help="HDF5 or SQLite visits file.",
 )
 @click.option("--out-dir", default=".", show_default=True, help="Output directory for results_db.")
 @click.option("--start-dayobs", required=True, type=int, help="Start date YYYYMMDD.")
 @click.option("--end-dayobs", required=True, type=int, help="End date YYYYMMDD (inclusive).")
 @click.option(
-    "--step", default=1, show_default=True, type=int, help="Nights between successive dayobs values."
+    "--step", default=30, show_default=True, type=int, help="Nights between successive dayobs values."
 )
 @click.option(
     "--batch",

@@ -266,8 +266,6 @@ def snapshot_batch(
 ) -> dict[str, maf.metric_bundles.MetricBundle]:
     """Generate progress-tracking metrics for the snapshot subsets.
 
-    Note: the visits database must include a boolean ``simulated`` column.
-
     Parameters
     ----------
     colmap : `dict` [`str`, `str`], optional
@@ -296,7 +294,7 @@ def snapshot_batch(
 
     if end_dayobs is not None:
         end_mjd = Time.strptime(str(end_dayobs), "%Y%m%d").mjd + 1.5
-        global_pdconstraints += f"and {colmap['mjd']} < {end_mjd}"
+        global_pdconstraints += f" and {colmap['mjd']} < {end_mjd}"
 
     pdconstraints: dict[str, str] = {}
     for band in bands:

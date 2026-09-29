@@ -497,9 +497,9 @@ class TestRunProgressBatches(unittest.TestCase):
             self.assertEqual(
                 batch.call_args_list,
                 [
-                    call(run_name="chimera_20260101", end_dayobs=20260101),
-                    call(run_name="chimera_20260105", end_dayobs=20260105),
-                    call(run_name="chimera_20260106", end_dayobs=20260106),
+                    call(run_name="consdb_20260101", end_dayobs=20260101),
+                    call(run_name="consdb_20260105", end_dayobs=20260105),
+                    call(run_name="consdb_20260106", end_dayobs=20260106),
                 ],
             )
 
@@ -518,7 +518,7 @@ class TestRunProgressBatches(unittest.TestCase):
                     batch_func=batch_func,
                     batch_kwargs={"nside": 8},
                 )
-            batch_func.assert_called_once_with(run_name="chimera_20260101", end_dayobs=20260101, nside=8)
+            batch_func.assert_called_once_with(run_name="consdb_20260101", end_dayobs=20260101, nside=8)
             self.assertIs(group.call_args.args[0], batch_func.return_value)
 
 
@@ -592,14 +592,21 @@ class TestSnapshotBatch(unittest.TestCase):
         bundles = snapshot_batch(run_name="baseline_20260102", bands=("g",), nside=8, end_dayobs=20260102)
         constraints = {bundle.info_label: bundle.pdconstraint for bundle in bundles.values()}
         end_mjd = Time("2026-01-03T12:00:00").mjd
-        self.assertEqual(constraints["snapshot_all"], f"not simulated and observationStartMJD < {end_mjd}")
         self.assertEqual(
-            constraints["snapshot_g"], f"not simulated and observationStartMJD < {end_mjd} and band == 'g'"
+            constraints["snapshot_all"], f"fiveSigmaDepth > 0.0 and observationStartMJD < {end_mjd}"
         )
+        self.assertEqual(
+            constraints["snapshot_g"],
+            f"fiveSigmaDepth > 0.0 and observationStartMJD < {end_mjd} and band == 'g'",
+        )
+        # Row 0: before end_mjd, depth > 0 -> included
+        # Row 1: before end_mjd, depth > 0 -> included
+        # Row 2: at end_mjd (not < end_mjd), depth > 0 -> excluded
+        # Row 3: before end_mjd, depth <= 0 -> excluded
         visits = pd.DataFrame(
             {
                 "observationStartMJD": [end_mjd - 1, end_mjd - 0.5, end_mjd, end_mjd - 0.5],
-                "simulated": [False, False, False, True],
+                "fiveSigmaDepth": [25.0, 24.5, 25.0, -1.0],
                 "band": ["g", "g", "g", "g"],
             }
         )
@@ -616,10 +623,10 @@ class TestSnapshotBatch(unittest.TestCase):
         bundles = snapshot_batch(colmap=colmap, bands=(), nside=8, end_dayobs=20260102)
         self.assertEqual(
             {bundle.pdconstraint for bundle in bundles.values()},
-            {f"not simulated and visitMjd < {Time('2026-01-03T12:00:00').mjd}"},
+            {f"fiveSigmaDepth > 0.0 and visitMjd < {Time('2026-01-03T12:00:00').mjd}"},
         )
         bundles = snapshot_batch(colmap=colmap, bands=(), nside=8)
-        self.assertEqual({bundle.pdconstraint for bundle in bundles.values()}, {"not simulated"})
+        self.assertEqual({bundle.pdconstraint for bundle in bundles.values()}, {"fiveSigmaDepth > 0.0"})
 
 
 class TestMakeChimeraSummaryTable(unittest.TestCase):
