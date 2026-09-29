@@ -288,9 +288,12 @@ def snapshot_batch(
     metric_bundleDict : `dict` [`str`, `MetricBundle`]
         A dictionary of metric bundles keyed by their file names.
     """
+    # Import here because progress imports batches during MAF initialization.
+    from rubin_sim.maf.progress import FIVE_SIGMA_DEPTH_LIMIT
+
     colmap = _make_colmap(colmap)
 
-    global_pdconstraints = f"{colmap['fiveSigmaDepth']} > 0.0"
+    global_pdconstraints = f"{colmap['fiveSigmaDepth']} > {FIVE_SIGMA_DEPTH_LIMIT}"
 
     if end_dayobs is not None:
         end_mjd = Time.strptime(str(end_dayobs), "%Y%m%d").mjd + 1.5

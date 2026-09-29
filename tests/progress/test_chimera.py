@@ -144,6 +144,21 @@ class TestBuildChimera(unittest.TestCase):
         )
         self.assertEqual(result["observationId"].tolist(), [1, 3, 101, 102, 103])
 
+    def test_shared_depth_limit_filters_both_sources(self):
+        consdb = self.consdb_visits.copy()
+        opsim = self.opsim_visits.copy()
+        consdb["fiveSigmaDepth"] = [24.1, 0.0, -1.0]
+        opsim["fiveSigmaDepth"] = [23.1, 0.0, np.nan]
+
+        result = build_chimera(consdb, opsim, 20260101, 20260103, 20260106)
+        self.assertEqual(result["observationId"].tolist(), [1, 101])
+
+        with patch("rubin_sim.maf.progress.FIVE_SIGMA_DEPTH_LIMIT", 24.1):
+            consdb.loc[0, "fiveSigmaDepth"] = 24.2
+            opsim.loc[0, "fiveSigmaDepth"] = 24.1
+            result = build_chimera(consdb, opsim, 20260101, 20260103, 20260106)
+        self.assertEqual(result["observationId"].tolist(), [1])
+
     def test_dayobs_boundary(self):
         """Test that dayObs boundary is correct."""
         result = build_chimera(
@@ -593,6 +608,13 @@ class TestRunProgressBatchesCommand(unittest.TestCase):
 
 
 class TestSnapshotBatch(unittest.TestCase):
+    def test_uses_shared_depth_limit(self):
+        from rubin_sim.maf.batches.progress_batch import snapshot_batch
+
+        with patch("rubin_sim.maf.progress.FIVE_SIGMA_DEPTH_LIMIT", 24.0):
+            bundles = snapshot_batch(bands=(), nside=8)
+        self.assertEqual({bundle.pdconstraint for bundle in bundles.values()}, {"fiveSigmaDepth > 24.0"})
+
     def test_filters_real_visits_through_end_dayobs(self):
         from rubin_sim.maf.batches.progress_batch import snapshot_batch
 
