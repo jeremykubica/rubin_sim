@@ -4,6 +4,7 @@ Tests the chimera and snapshot APIs in rubin_sim.maf.progress using
 synthetic visits sampled from the baseline opsim database.
 """
 
+import datetime
 import os
 import tempfile
 import unittest
@@ -227,7 +228,7 @@ class TestBuildChimeras(unittest.TestCase):
     def setUpClass(cls):
         """Generate sample test data once for all tests."""
         cls.opsim_visits = make_sample_opsim_visits(n_visits=500, random_state=42)
-        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, days=60, random_state=42)
+        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, random_state=42)
         cls.out_dir = tempfile.mkdtemp(prefix="chimera_test_")
 
     @classmethod
@@ -270,9 +271,14 @@ class TestBuildChimeras(unittest.TestCase):
         )
 
         transition_dates = [t for t, _ in specs]
+
+        def _to_date(dayobs):
+            s = f"{dayobs:08d}"
+            return datetime.date(int(s[:4]), int(s[4:6]), int(s[6:]))
+
         # Check that dates are spaced by step (except possibly last)
         for i in range(len(transition_dates) - 1):
-            diff = transition_dates[i + 1] - transition_dates[i]
+            diff = (_to_date(transition_dates[i + 1]) - _to_date(transition_dates[i])).days
             self.assertEqual(diff, 7)  # Step should be exactly 7
         # Last date should be max consdb dayObs
         max_consdb = int(self.consdb_visits["dayObs"].max())
@@ -354,7 +360,7 @@ class TestRunChimeraBatches(unittest.TestCase):
     def setUpClass(cls):
         """Generate sample test data and build chimera files."""
         cls.opsim_visits = make_sample_opsim_visits(n_visits=500, random_state=42)
-        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, days=60, random_state=42)
+        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, random_state=42)
         cls.out_dir = tempfile.mkdtemp(prefix="chimera_batch_test_")
 
         # Build some chimera files
@@ -636,7 +642,7 @@ class TestMakeChimeraSummaryTable(unittest.TestCase):
     def setUpClass(cls):
         """Run a full chimera batch workflow."""
         cls.opsim_visits = make_sample_opsim_visits(n_visits=500, random_state=42)
-        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, days=60, random_state=42)
+        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, random_state=42)
         cls.out_dir = tempfile.mkdtemp(prefix="chimera_summary_test_")
 
         # Build chimera files
@@ -737,7 +743,7 @@ class TestEndToEnd(unittest.TestCase):
     def setUpClass(cls):
         """Generate sample data and run full workflow."""
         cls.opsim_visits = make_sample_opsim_visits(n_visits=500, random_state=42)
-        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, days=60, random_state=42)
+        cls.consdb_visits = make_sample_consdb_visits(n_visits=100, random_state=42)
         cls.out_dir = tempfile.mkdtemp(prefix="e2e_test_")
 
         # Build chimera files

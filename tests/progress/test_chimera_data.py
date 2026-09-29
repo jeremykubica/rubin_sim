@@ -90,7 +90,7 @@ def make_sample_opsim_visits(n_visits: int = 500, random_state: int | None = 42)
 
 
 def make_sample_consdb_visits(
-    n_visits: int = 100, days: int = 60, random_state: int | None = 42
+    n_visits: int = 100, random_state: int | None = 42
 ) -> pd.DataFrame:
     """Generate synthetic consdb visits from first N days of baseline.
 
@@ -100,8 +100,6 @@ def make_sample_consdb_visits(
     ----------
     n_visits : int, optional
         Number of visits to generate. Default 100.
-    days : int, optional
-        Number of days to generate visits within. Default 60 (2 months).
     random_state : int or None, optional
         Random state for reproducible sampling. Default 42.
 
@@ -110,8 +108,6 @@ def make_sample_consdb_visits(
     visits : pandas.DataFrame
         Synthetic visits with dayObs column.
     """
-    rng = np.random.default_rng(random_state)
-
     # Get baseline database
     baseline_path = get_baseline()
 
