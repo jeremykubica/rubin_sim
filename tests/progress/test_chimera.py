@@ -546,6 +546,7 @@ class TestRunProgressBatchesCommand(unittest.TestCase):
                         "--visits-file", visits_file,
                         "--start-dayobs", "20260101",
                         "--end-dayobs", "20260102",
+                        "--step", "1",
                         "--batch", "custom_progress_batch",
                         "--batch-kwarg", "nside=8",
                         "--out-dir", out_dir,
