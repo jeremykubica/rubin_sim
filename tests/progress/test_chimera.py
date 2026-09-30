@@ -542,6 +542,40 @@ class TestRunProgressBatches(unittest.TestCase):
             batch_func.assert_called_once_with(run_name="consdb_20260101", end_dayobs=20260101, nside=8)
             self.assertIs(group.call_args.args[0], batch_func.return_value)
 
+    def test_empty_early_snapshot_writes_no_rows(self):
+        """Dates before first qualifying visit write no ResultsDb rows; no exception is raised.
+
+        Replicates the manual check from Implementation Notes (2026-09-29):
+        run_progress_batches on make_sample_consdb_visits(n_visits=100, random_state=42)
+        (first dayObs 20260102) with start=20251201, end=20260105, step=30 produces
+        dates [20251201, 20251231, 20260105].  The first two are before any visit, so
+        they write no rows; only consdb_20260105 appears in the ResultsDb.
+        Verifies R-3 (empty early snapshots are silently skipped) and R-5 (run names).
+        """
+        consdb_visits = make_sample_consdb_visits(n_visits=100, random_state=42)
+        with tempfile.TemporaryDirectory() as out_dir:
+            visits_path = os.path.join(out_dir, "consdb.h5")
+            consdb_visits.to_hdf(visits_path, key="observations", complevel=5)
+
+            results_db_path = run_progress_batches(
+                visits_path,
+                start_dayobs=20251201,
+                end_dayobs=20260105,
+                step=30,
+                out_dir=out_dir,
+                batch_kwargs={"nside": 8, "bands": ()},
+            )
+
+            results_db = ResultsDb(database=results_db_path)
+            run_names = results_db.get_run_name()
+            results_db.close()
+
+        # Dates 20251201 and 20251231 precede the first visit; they must not appear.
+        self.assertNotIn("consdb_20251201", run_names)
+        self.assertNotIn("consdb_20251231", run_names)
+        # The end date lands on or after the first visit and must appear.
+        self.assertIn("consdb_20260105", run_names)
+
 
 class TestRunProgressBatchesCommand(unittest.TestCase):
     def test_selects_batch_by_name(self):
