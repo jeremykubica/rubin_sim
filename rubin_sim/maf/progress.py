@@ -517,7 +517,7 @@ def run_chimera_batches_cmd(chimera_dir, out_dir, batch, batch_kwargs):
         parsed_batch_kwargs[key] = value
 
     batch_func = getattr(batches, batch, None)
-    if batch_func is None:
+    if batch_func is None or not callable(batch_func):
         raise click.BadParameter(
             f"'{batch}' is not a known batch function in rubin_sim.maf.batches.",
             param_hint="--batch",
