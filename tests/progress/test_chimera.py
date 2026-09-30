@@ -670,6 +670,127 @@ class TestChimeraBatch(unittest.TestCase):
         self.assertEqual(fo_bundle.slicer.nside, 8)
         self.assertEqual({metric.nside for metric in fo_bundle.summary_metrics}, {8})
 
+    def test_covers_required_metrics(self):
+        """chimera_batch covers all metrics and summaries required by R-4.
+
+        For each band u,g,r,i,z,y and for all bands combined:
+        - a t_eff sum bundle (UniSlicer, no summary metrics);
+        - a visit-count bundle (UniSlicer, no summary metrics);
+        - a HEALPix visit-count bundle with standard summary stats,
+          the top-18k-deg² minimum, and the 10th-percentile summary;
+        - a HEALPix coadded-depth bundle with the same three summary groups.
+
+        Plus exactly the five fO summary metrics (fOArea, fOArea/benchmark,
+        fONv, fONv/benchmark, fOArea_750) on a single fO bundle.
+        """
+        import rubin_sim.maf.slicers as slicers
+        from rubin_sim.maf.batches.progress_batch import chimera_batch
+
+        BANDS = ("u", "g", "r", "i", "z", "y")
+        LABELS = [f"chimera_{b}" for b in BANDS] + ["chimera_all"]
+
+        bundles = chimera_batch(bands=BANDS, nside=8)
+        bundle_list = list(bundles.values())
+
+        # --- Separate fO bundle from the base bundles ---
+        fo_bundles = [b for b in bundle_list if b.metric.name == "fO"]
+        base_bundles = [b for b in bundle_list if b.metric.name != "fO"]
+
+        # --- fO bundle ---
+        self.assertEqual(len(fo_bundles), 1, "Expected exactly one fO bundle")
+        fo_summary_names = {m.name for m in fo_bundles[0].summary_metrics}
+        expected_fo_summaries = {
+            "fOArea",
+            "fOArea/benchmark",
+            "fONv",
+            "fONv/benchmark",
+            "fOArea_750",
+        }
+        self.assertEqual(fo_summary_names, expected_fo_summaries)
+
+        # --- Base bundles: one per (metric_type, label) ---
+        # Expect 4 metric types × 7 labels = 28 bundles
+        self.assertEqual(len(base_bundles), 4 * len(LABELS))
+
+        # Index base bundles by (metric.name, info_label).
+        # Use metric.name (the constructed display name, e.g. "t_eff", "Numbers of exposures").
+        by_metric_label: dict[tuple[str, str], object] = {}
+        for b in base_bundles:
+            by_metric_label[(b.metric.name, b.info_label)] = b
+
+        # Names as returned by .name on the summary metric instances:
+        # standard_summary() names end with " None" for column-agnostic metrics.
+        STANDARD_SUMMARY_NAMES = {
+            "Mean None", "Rms None", "Median None", "Max None", "Min None",
+            "N(+3Sigma)", "N(-3Sigma)", "Count None",
+        }
+        # AreaSummaryMetric(metric_name="top18k") → m.name == "top18k"
+        # PercentileMetric(col="metricdata", percentile=10) → m.name == "10th%ile metricdata"
+        TOP18K_NAME = "top18k"
+        PERCENTILE_NAME = "10th%ile metricdata"
+
+        for label in LABELS:
+            with self.subTest(label=label):
+                # t_eff sum — UniSlicer, no configured summary metrics.
+                # SumMetric(col="t_eff") produces metric.name == "Sum t_eff".
+                # MAF automatically appends IdentityMetric for UniSlicer bundles;
+                # assert the only summary metric is that auto-added one.
+                teff_key = ("Sum t_eff", label)
+                self.assertIn(teff_key, by_metric_label, f"Missing t_eff bundle for {label}")
+                teff = by_metric_label[teff_key]
+                self.assertIsInstance(teff.slicer, slicers.UniSlicer)
+                teff_summary_names = {m.name for m in teff.summary_metrics}
+                self.assertTrue(
+                    teff_summary_names.issubset({"Identity None"}),
+                    f"t_eff bundle for {label} has unexpected summary metrics: {teff_summary_names}"
+                )
+
+                # Visit count — UniSlicer, no configured summary metrics.
+                count_uni_key = ("Numbers of exposures", label)
+                self.assertIn(count_uni_key, by_metric_label, f"Missing visit-count bundle for {label}")
+                count_uni = by_metric_label[count_uni_key]
+                self.assertIsInstance(count_uni.slicer, slicers.UniSlicer)
+                count_uni_summary_names = {m.name for m in count_uni.summary_metrics}
+                self.assertTrue(
+                    count_uni_summary_names.issubset({"Identity None"}),
+                    f"Visit-count bundle for {label} has unexpected summary metrics: "
+                    f"{count_uni_summary_names}"
+                )
+
+                # HEALPix visit-count area stats — HealpixSlicer + required summaries
+                count_healpix_key = ("Number of exposure area stats", label)
+                self.assertIn(count_healpix_key, by_metric_label,
+                              f"Missing HEALPix visit-count bundle for {label}")
+                count_hp = by_metric_label[count_healpix_key]
+                self.assertIsInstance(count_hp.slicer, slicers.HealpixSlicer)
+                count_hp_summary_names = {m.name for m in count_hp.summary_metrics}
+                self.assertTrue(
+                    STANDARD_SUMMARY_NAMES.issubset(count_hp_summary_names),
+                    f"HEALPix visit-count for {label} missing standard summaries; "
+                    f"got {count_hp_summary_names}"
+                )
+                self.assertIn(TOP18K_NAME, count_hp_summary_names,
+                              f"HEALPix visit-count for {label} missing top18k summary")
+                self.assertIn(PERCENTILE_NAME, count_hp_summary_names,
+                              f"HEALPix visit-count for {label} missing 10th-percentile summary")
+
+                # HEALPix coadded-depth area stats — HealpixSlicer + required summaries
+                depth_key = ("Depth area stats", label)
+                self.assertIn(depth_key, by_metric_label,
+                              f"Missing HEALPix depth bundle for {label}")
+                depth_hp = by_metric_label[depth_key]
+                self.assertIsInstance(depth_hp.slicer, slicers.HealpixSlicer)
+                depth_hp_summary_names = {m.name for m in depth_hp.summary_metrics}
+                self.assertTrue(
+                    STANDARD_SUMMARY_NAMES.issubset(depth_hp_summary_names),
+                    f"HEALPix depth for {label} missing standard summaries; "
+                    f"got {depth_hp_summary_names}"
+                )
+                self.assertIn(TOP18K_NAME, depth_hp_summary_names,
+                              f"HEALPix depth for {label} missing top18k summary")
+                self.assertIn(PERCENTILE_NAME, depth_hp_summary_names,
+                              f"HEALPix depth for {label} missing 10th-percentile summary")
+
 
 class TestSnapshotBatch(unittest.TestCase):
     def test_uses_shared_depth_limit(self):
