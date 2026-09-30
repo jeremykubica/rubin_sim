@@ -685,6 +685,18 @@ class TestRunProgressBatchesCommand(unittest.TestCase):
 
 
 class TestRunChimeraBatchesCommand(unittest.TestCase):
+    def test_rejects_unknown_batch(self):
+        with tempfile.TemporaryDirectory() as chimera_dir:
+            with patch("rubin_sim.maf.progress.run_chimera_batches") as run_batches:
+                result = CliRunner().invoke(
+                    run_chimera_batches_cmd,
+                    ["--chimera-dir", chimera_dir, "--batch", "not_a_batch"],
+                )
+
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertIn("not a known batch function", result.output)
+            run_batches.assert_not_called()
+
     def test_rejects_malformed_batch_kwarg(self):
         with tempfile.TemporaryDirectory() as chimera_dir:
             with patch("rubin_sim.maf.progress.run_chimera_batches") as run_batches:
