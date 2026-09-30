@@ -714,6 +714,27 @@ class TestRunChimeraBatchesCommand(unittest.TestCase):
                 run_batches.assert_not_called()
 
 
+class TestProgressConsoleScripts(unittest.TestCase):
+    def test_console_scripts_are_registered(self):
+        from importlib.metadata import distribution
+
+        scripts = {
+            entry_point.name: entry_point.value
+            for entry_point in distribution("rubin-sim").entry_points
+            if entry_point.group == "console_scripts"
+        }
+        expected = {
+            "build_chimeras": "rubin_sim.maf.progress:build_chimeras_cmd",
+            "run_chimera_batches": "rubin_sim.maf.progress:run_chimera_batches_cmd",
+            "run_progress_batches": "rubin_sim.maf.progress:run_progress_batches_cmd",
+            "make_chimera_summary_table": "rubin_sim.maf.progress:make_chimera_summary_table_cmd",
+        }
+
+        for name, target in expected.items():
+            with self.subTest(script=name):
+                self.assertEqual(scripts.get(name), target)
+
+
 def _assert_base_progress_bundles(test_case, bundles, labels):
     """Assert that ``bundles`` contains the four required R-4 bundle types for each label.
 
